@@ -35,7 +35,7 @@ Sample Output
 -----
 Sorted by Ports
 
-![image](https://github.com/user-attachments/assets/5398c4d5-4672-445b-91e1-64390b2a0784)
+![image](https://github.com/user-attachments/assets/bf4f5094-e477-4be6-8ff3-aa3924c5935c)
 
 Sorted by Hosts
 
