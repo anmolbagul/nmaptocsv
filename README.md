@@ -17,7 +17,7 @@ cd nmaptocsv
 python3 nmaptocsv_port.py
 ```
 
-Usage
+Sample Output
 -----
 Sorted by Ports
 
