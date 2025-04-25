@@ -154,3 +154,4 @@ with open(OUTPUT_PORT_VIEW, 'w', newline='') as f:
 
 print(f"[+] Host summary written to {OUTPUT_FILE}")
 print(f"[+] Port view written to {OUTPUT_PORT_VIEW}")
+
