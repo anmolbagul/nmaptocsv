@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 import csv
 from collections import defaultdict
 from datetime import datetime
+import re
 
 # Define extended service-port mappings
 SERVICE_CATEGORIES = {
@@ -24,7 +25,21 @@ OUTPUT_ALL_HOSTS = './output/all_hosts.csv'
 OUTPUT_DETAILED = './output/port_detailed_report.csv'
 os.makedirs(os.path.dirname(OUTPUT_ALL_HOSTS), exist_ok=True)
 
-# Categorize port to service bucket or use service name fallback
+# Risk assessment based on script output
+def assess_risk(script_output):
+    output = script_output.lower()
+    if 'vulnerable' in output or 'cve-' in output:
+        return 'High'
+    elif 'weak' in output or 'outdated' in output:
+        return 'Medium'
+    else:
+        return 'Low'
+
+# Extract CVE IDs from script output
+def extract_cves(script_output):
+    return ';'.join(re.findall(r'CVE-\d{4}-\d{4,7}', script_output))
+
+# Categorize port to service bucket
 def get_service_category(port, service_name):
     for category, ports in SERVICE_CATEGORIES.items():
         if port in ports:
@@ -105,12 +120,16 @@ for filename in os.listdir(INPUT_DIR):
 
                     category = get_service_category(portid, service_name)
 
-                    # Parse NSE script output
                     script_id = ''
                     script_output = ''
+                    risk = 'Low'
+                    cve_list = ''
+
                     for script in port.findall('script'):
                         script_id = script.attrib.get('id', '')
                         script_output = script.attrib.get('output', '')
+                        risk = assess_risk(script_output)
+                        cve_list = extract_cves(script_output)
 
                     port_detailed_data.append([
                         portid,
@@ -124,6 +143,8 @@ for filename in os.listdir(INPUT_DIR):
                         service_fp,
                         script_id,
                         script_output,
+                        risk,
+                        cve_list,
                         filename,
                         ''  # Notes
                     ])
@@ -133,7 +154,7 @@ for filename in os.listdir(INPUT_DIR):
                     host_data[address]['ip'] = address
                     host_data[address]['file'] = filename
                     host_data[address]['timestamp'] = scan_time
-                    host_data[address]['ports'].append((portid, proto, service_name, category, product, service_fp, script_id, script_output))
+                    host_data[address]['ports'].append((portid, proto, service_name, category, product, service_fp, script_id, script_output, risk, cve_list))
 
         except ET.ParseError:
             print(f"[!] Failed to parse {filename}")
@@ -144,13 +165,13 @@ port_detailed_data.sort(key=lambda x: (x[0], x[1]))
 # Write port-detailed CSV
 with open(OUTPUT_DETAILED, 'w', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
-    writer.writerow(['Port', 'IP', 'Host', 'OS', 'Protocol', 'Service', 'Category', 'Product', 'Service FP', 'NSE Script ID', 'NSE Script Output', 'Source File', 'Notes'])
+    writer.writerow(['Port', 'IP', 'Host', 'OS', 'Protocol', 'Service', 'Category', 'Product', 'Service FP', 'NSE Script ID', 'NSE Script Output', 'Risk Level', 'CVE List', 'Source File', 'Notes'])
     writer.writerows(port_detailed_data)
 
 # Write all-hosts summary CSV
 with open(OUTPUT_ALL_HOSTS, 'w', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
-    writer.writerow(['IP', 'Hostnames', 'OS', 'Port Count', 'Ports', 'Protocols', 'Services', 'Categories', 'Products', 'Service FPs', 'NSE Script IDs', 'NSE Script Outputs', 'Source File', 'Timestamp'])
+    writer.writerow(['IP', 'Hostnames', 'OS', 'Port Count', 'Ports', 'Protocols', 'Services', 'Categories', 'Products', 'Service FPs', 'NSE Script IDs', 'NSE Script Outputs', 'Risk Levels', 'CVE Lists', 'Source File', 'Timestamp'])
     for ip, data in host_data.items():
         ports = [str(p[0]) for p in data['ports']]
         protocols = [p[1] for p in data['ports']]
@@ -160,6 +181,8 @@ with open(OUTPUT_ALL_HOSTS, 'w', newline='', encoding='utf-8') as f:
         service_fps = [p[5] for p in data['ports']]
         script_ids = [p[6] for p in data['ports']]
         script_outputs = [p[7] for p in data['ports']]
+        risks = [p[8] for p in data['ports']]
+        cves = [p[9] for p in data['ports']]
         writer.writerow([
             data['ip'],
             ';'.join(data['hostnames']) if data['hostnames'] else 'N/A',
@@ -173,9 +196,12 @@ with open(OUTPUT_ALL_HOSTS, 'w', newline='', encoding='utf-8') as f:
             ';'.join(service_fps),
             ';'.join(script_ids),
             ';'.join(script_outputs),
+            ';'.join(risks),
+            ';'.join(cves),
             data['file'],
             data['timestamp']
         ])
 
 print(f"[+] Host summary written to {OUTPUT_ALL_HOSTS}")
 print(f"[+] Port details written to {OUTPUT_DETAILED}")
+
