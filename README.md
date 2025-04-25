@@ -14,7 +14,7 @@ The processed csv files will be in `output` folder.
 https://github.com/anmolbagul/nmaptocsv.git
 cd nmaptocsv
 ## Copy `.xml` output files to `nmap_xml` folder.
-python3 nmaptocsv_port.py
+python3 nmaptocsv.py
 ```
 
 Sample Output
