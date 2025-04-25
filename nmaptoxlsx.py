@@ -192,3 +192,4 @@ wb2.save(OUTPUT_ALL_HOSTS)
 
 print(f"[+] Host summary written to {OUTPUT_ALL_HOSTS}")
 print(f"[+] Port details written to {OUTPUT_DETAILED}")
+
